@@ -5,3 +5,8 @@ Like a diamond in the sky.
 Twinkle, twinkle, little star,
 How I wonder what you are!
 ''')
+
+
+
+# a= "31.2"
+# print(type(a))
