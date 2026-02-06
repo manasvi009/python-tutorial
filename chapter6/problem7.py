@@ -5,7 +5,7 @@ post = '''hello my name is manasvi
         i am loving it'''
 
 word = input("Enter a word to search: ")
-if(word in post):
+if(word.lower() in post.lower()):
     print("The word is present in the post.")
 else:
     print("The word is not present in this post.")
