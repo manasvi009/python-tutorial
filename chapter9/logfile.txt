@@ -1,0 +1,2 @@
+python is a simple and easy language.
+AI-ML is developed using python.

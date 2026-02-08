@@ -1,0 +1,5 @@
+###### is a animal.
+donkey has four legs.
+###### has two eyes.
+donkey has one tail.
+###### is also animal.
