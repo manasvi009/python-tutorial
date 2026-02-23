@@ -1,10 +1,13 @@
 from openai import OpenAI
- 
-# pip install openai 
-# if you saved the key under a different environment variable name, you can do something like:
-client = OpenAI(
-  api_key="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",
-)
+
+# Configuration - Update with your actual API key
+OPENAI_API_KEY = "YOUR_OPENAI_API_KEY_HERE"  # Replace with your OpenAI API key
+
+if OPENAI_API_KEY == "YOUR_OPENAI_API_KEY_HERE":
+    print("Please configure your OpenAI API key in client.py")
+    exit(1)
+
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 completion = client.chat.completions.create(
   model="gpt-3.5-turbo",
