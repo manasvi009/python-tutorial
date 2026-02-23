@@ -7,6 +7,9 @@ from openai import OpenAI
 from gtts import gTTS
 import pygame
 import os
+import subprocess
+import platform
+import urllib.parse
 
 # Configuration - Update these with your actual API keys
 OPENAI_API_KEY = "YOUR_OPENAI_API_KEY_HERE"  # Replace with your OpenAI API key
@@ -64,6 +67,94 @@ def speak(text):
         except:
             pass 
 
+def launch_app(app_name):
+    """Launch applications on Windows"""
+    app_commands = {
+        "notepad": "notepad.exe",
+        "calculator": "calc.exe",
+        "paint": "mspaint.exe",
+        "word": "winword.exe",
+        "excel": "excel.exe",
+        "powerpoint": "powerpnt.exe",
+        "chrome": "chrome.exe",
+        "firefox": "firefox.exe",
+        "edge": "msedge.exe",
+        "vlc": "vlc.exe",
+        "spotify": "spotify.exe",
+        "steam": "steam.exe",
+        "discord": "discord.exe",
+        "vs code": "code.exe",
+        "code": "code.exe",
+        "sublime": "sublime_text.exe",
+        "photoshop": "photoshop.exe",
+        "illustrator": "illustrator.exe",
+        "cmd": "cmd.exe",
+        "command prompt": "cmd.exe",
+        "powershell": "powershell.exe",
+        "explorer": "explorer.exe",
+        "file manager": "explorer.exe",
+        "control panel": "control.exe",
+        "settings": "start ms-settings:",
+        "task manager": "taskmgr.exe"
+    }
+    
+    app_name = app_name.lower().strip()
+    
+    if app_name in app_commands:
+        try:
+            command = app_commands[app_name]
+            if command.startswith("start "):
+                # For special commands like settings
+                os.system(command)
+            else:
+                # For regular applications
+                subprocess.Popen(command)
+            return True
+        except Exception as e:
+            print(f"Error launching {app_name}: {e}")
+            return False
+    else:
+        # Try to find the app in common locations
+        try:
+            username = os.getlogin()
+        except:
+            # Fallback if os.getlogin() fails
+            username = os.environ.get('USERNAME', 'default')
+        
+        common_paths = [
+            f"C:\\Program Files\\{app_name}\\{app_name}.exe",
+            f"C:\\Program Files (x86)\\{app_name}\\{app_name}.exe",
+            f"C:\\Users\\{username}\\AppData\\Local\\{app_name}\\{app_name}.exe"
+        ]
+        
+        for path in common_paths:
+            if os.path.exists(path):
+                try:
+                    subprocess.Popen(path)
+                    return True
+                except Exception as e:
+                    print(f"Error launching from {path}: {e}")
+                    continue
+        return False
+
+def search_youtube_video(query):
+    """Search for a video on YouTube and open it"""
+    try:
+        # Format the search query
+        search_query = query.replace("play", "").replace("youtube", "").replace("on youtube", "").strip()
+        if not search_query:
+            return False
+            
+        # Create YouTube search URL
+        search_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(search_query)}"
+        
+        # Open the search results
+        webbrowser.open(search_url)
+        return True
+    except Exception as e:
+        print(f"Error searching YouTube: {e}")
+        return False
+
 def aiProcess(command):
     """Process command using OpenAI"""
     if OPENAI_API_KEY == "YOUR_OPENAI_API_KEY_HERE":
@@ -88,20 +179,76 @@ def aiProcess(command):
         return "Sorry, I'm having trouble processing that request right now."
 
 def processCommand(c):
-    if "open google" in c.lower():
+    command = c.lower()
+    
+    # App launching commands
+    if command.startswith("open") or command.startswith("launch"):
+        app_name = command.replace("open", "").replace("launch", "").strip()
+        if app_name:
+            speak(f"Opening {app_name}")
+            if launch_app(app_name):
+                speak(f"{app_name} has been opened successfully")
+            else:
+                speak(f"Sorry, I couldn't find or open {app_name}")
+        else:
+            speak("Please specify which application to open")
+    
+    elif "start" in command and ("app" in command or "application" in command):
+        # Handle "start [app name] app" format
+        words = command.split()
+        if "start" in words:
+            start_index = words.index("start")
+            if start_index + 1 < len(words):
+                app_name = words[start_index + 1]
+                speak(f"Starting {app_name}")
+                if launch_app(app_name):
+                    speak(f"{app_name} has been started")
+                else:
+                    speak(f"Sorry, I couldn't start {app_name}")
+    
+    # YouTube video playing commands
+    elif "play" in command and "youtube" in command:
+        speak("Searching YouTube for your video")
+        if search_youtube_video(command):
+            speak("I've opened YouTube with your search results")
+        else:
+            speak("Sorry, I couldn't search YouTube right now")
+        
+    elif command.startswith("youtube") and "play" in command:
+        speak("Searching YouTube for your video")
+        if search_youtube_video(command):
+            speak("I've opened YouTube with your search results")
+        else:
+            speak("Sorry, I couldn't search YouTube right now")
+        
+    elif "search youtube for" in command:
+        speak("Searching YouTube for your query")
+        if search_youtube_video(command):
+            speak("I've opened YouTube with your search results")
+        else:
+            speak("Sorry, I couldn't search YouTube right now")
+    
+    elif "open google" in command:
+        speak("Opening Google")
         webbrowser.open("https://google.com")
-    elif "open facebook" in c.lower():
+    elif "open facebook" in command:
+        speak("Opening Facebook")
         webbrowser.open("https://facebook.com")
-    elif "open youtube" in c.lower():
+    elif "open youtube" in command:
+        speak("Opening YouTube")
         webbrowser.open("https://youtube.com")
-    elif "open linkedin" in c.lower():
+    elif "open linkedin" in command:
+        speak("Opening LinkedIn")
         webbrowser.open("https://linkedin.com")
-    elif c.lower().startswith("play"):
-        song = c.lower().split(" ")[1]
-        link = musicLibrary.music[song]
-        webbrowser.open(link)
+    elif command.startswith("play"):
+        try:
+            song = command.split(" ")[1]
+            link = musicLibrary.music[song]
+            webbrowser.open(link)
+        except:
+            speak("Please specify which song to play")
 
-    elif "news" in c.lower():
+    elif "news" in command:
         if NEWS_API_KEY == "YOUR_NEWS_API_KEY_HERE":
             speak("Please configure your NewsAPI key to get news updates.")
             return
@@ -128,6 +275,7 @@ def processCommand(c):
             print(f"News error: {e}")
             speak("Sorry, I'm having trouble fetching news right now.")
 
+
     else:
         # Let OpenAI handle the request
         output = aiProcess(c)
@@ -138,48 +286,76 @@ def processCommand(c):
 
 
 if __name__ == "__main__":
-    # Initialize recognizer
+    # Initialize recognizer with better settings
     r = sr.Recognizer()
+    r.energy_threshold = 400
+    r.dynamic_energy_threshold = True
+    r.pause_threshold = 0.8
+    r.phrase_threshold = 0.3
+    r.non_speaking_duration = 0.5
     
     # Configure microphone settings
     try:
         with sr.Microphone() as source:
-            print("Adjusting for ambient noise... Please wait.")
-            r.adjust_for_ambient_noise(source, duration=1)
+            print("Adjusting for ambient noise... Please wait 2 seconds.")
+            print("🎵 Make sure to speak clearly and at normal volume")
+            r.adjust_for_ambient_noise(source, duration=2)
+            print(f"Energy threshold set to: {r.energy_threshold}")
             print("Microphone calibrated!")
     except Exception as e:
         print(f"Microphone setup error: {e}")
         print("Make sure you have a working microphone connected.")
     
     speak("Initializing Jarvis....")
-    print("Jarvis is ready! Say 'Jarvis' to activate me.")
+    print("🎙️  Jarvis is ready! Say 'Jarvis' to activate me.")
+    print("💡 Tip: Speak clearly and pause slightly between words")
     
     while True:
         try:
             # Listen for the wake word "Jarvis"
             with sr.Microphone() as source:
-                print("Listening for wake word...")
-                # Longer timeout for wake word detection
-                audio = r.listen(source, timeout=3, phrase_time_limit=2)
+                print("\n👂 Listening for 'Jarvis' (wake word)...")
+                # Better audio listening settings
+                audio = r.listen(source, timeout=5, phrase_time_limit=3)
             
-            word = r.recognize_google(audio)
-            print(f"Heard: {word}")
-            
-            if word.lower() == "jarvis":
-                speak("Yes, how can I help you?")
-                print("Jarvis activated! Listening for command...")
+            # Try to recognize the wake word
+            try:
+                word = r.recognize_google(audio, show_all=False)
+                print(f"🔍 Heard: '{word}'")
                 
-                # Listen for command
-                with sr.Microphone() as source:
-                    print("Listening for your command...")
-                    audio = r.listen(source, timeout=5, phrase_time_limit=5)
-                    command = r.recognize_google(audio)
-                    print(f"Command received: {command}")
+                if word.lower() == "jarvis":
+                    speak("Yes, how can I help you?")
+                    print("✅ Jarvis activated! Listening for command...")
                     
-                    processCommand(command)
-            
+                    # Listen for command with better settings
+                    with sr.Microphone() as source:
+                        print("👂 Listening for your command...")
+                        audio = r.listen(source, timeout=8, phrase_time_limit=6)
+                    
+                    try:
+                        command = r.recognize_google(audio, show_all=False)
+                        print(f"📝 Command received: '{command}'")
+                        processCommand(command)
+                    except sr.UnknownValueError:
+                        speak("Sorry, I didn't catch that. Please try again.")
+                        print("❌ Could not understand the command")
+                    except sr.RequestError as e:
+                        speak("Sorry, speech service is unavailable right now.")
+                        print(f"❌ Speech service error: {e}")
+                        
+                else:
+                    print(f"⏭️  Not the wake word. Heard: '{word}'")
+                    
+            except sr.UnknownValueError:
+                print("🔇 No clear speech detected")
+                continue
+            except sr.RequestError as e:
+                print(f"❌ Speech recognition service error: {e}")
+                speak("Sorry, I'm having trouble with speech recognition.")
+                
         except sr.WaitTimeoutError:
             # This is normal - just continue listening
+            print("⏰ Still listening...")
             continue
         except sr.UnknownValueError:
             print("Could not understand audio, trying again...")
