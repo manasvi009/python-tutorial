@@ -181,17 +181,76 @@ def aiProcess(command):
 def processCommand(c):
     command = c.lower()
     
-    # App launching commands
-    if command.startswith("open") or command.startswith("launch"):
+    # YouTube video playing commands (prioritized first)
+    if "play" in command and "youtube" in command:
+        speak("Searching YouTube for your video")
+        if search_youtube_video(command):
+            speak("I've opened YouTube with your search results")
+        else:
+            speak("Sorry, I couldn't search YouTube right now")
+        return True  # Continue running in main loop
+    
+    elif command.startswith("youtube") and "play" in command:
+        speak("Searching YouTube for your video")
+        if search_youtube_video(command):
+            speak("I've opened YouTube with your search results")
+        else:
+            speak("Sorry, I couldn't search YouTube right now")
+        return True  # Continue running in main loop
+        
+    elif "search youtube for" in command:
+        speak("Searching YouTube for your query")
+        if search_youtube_video(command):
+            speak("I've opened YouTube with your search results")
+        else:
+            speak("Sorry, I couldn't search YouTube right now")
+        return True  # Continue running in main loop
+    
+    # Web browsing commands (prioritized over app launching to avoid confusion)
+    elif "open google" in command:
+        speak("Opening Google")
+        webbrowser.open("https://google.com")
+        return True  # Continue running in main loop
+        
+    elif "open facebook" in command:
+        speak("Opening Facebook")
+        webbrowser.open("https://facebook.com")
+        return True  # Continue running in main loop
+        
+    elif "open youtube" in command:
+        speak("Opening YouTube")
+        webbrowser.open("https://youtube.com")
+        return True  # Continue running in main loop
+        
+    elif "open linkedin" in command:
+        speak("Opening LinkedIn")
+        webbrowser.open("https://linkedin.com")
+        return True  # Continue running in main loop
+    
+    # App launching commands (lower priority to avoid conflicts with web commands)
+    elif command.startswith("open") or command.startswith("launch"):
         app_name = command.replace("open", "").replace("launch", "").strip()
         if app_name:
-            speak(f"Opening {app_name}")
-            if launch_app(app_name):
-                speak(f"{app_name} has been opened successfully")
+            # Check if it's a known website name to avoid confusion
+            if app_name in ["google", "youtube", "facebook", "linkedin"]:
+                speak(f"Opening {app_name}")
+                if app_name == "google":
+                    webbrowser.open("https://google.com")
+                elif app_name == "youtube":
+                    webbrowser.open("https://youtube.com")
+                elif app_name == "facebook":
+                    webbrowser.open("https://facebook.com")
+                elif app_name == "linkedin":
+                    webbrowser.open("https://linkedin.com")
             else:
-                speak(f"Sorry, I couldn't find or open {app_name}")
+                speak(f"Opening {app_name}")
+                if launch_app(app_name):
+                    speak(f"{app_name} has been opened successfully")
+                else:
+                    speak(f"Sorry, I couldn't find or open {app_name}")
         else:
             speak("Please specify which application to open")
+        return True  # Continue running in main loop
     
     elif "start" in command and ("app" in command or "application" in command):
         # Handle "start [app name] app" format
@@ -205,41 +264,8 @@ def processCommand(c):
                     speak(f"{app_name} has been started")
                 else:
                     speak(f"Sorry, I couldn't start {app_name}")
+        return True  # Continue running in main loop
     
-    # YouTube video playing commands
-    elif "play" in command and "youtube" in command:
-        speak("Searching YouTube for your video")
-        if search_youtube_video(command):
-            speak("I've opened YouTube with your search results")
-        else:
-            speak("Sorry, I couldn't search YouTube right now")
-        
-    elif command.startswith("youtube") and "play" in command:
-        speak("Searching YouTube for your video")
-        if search_youtube_video(command):
-            speak("I've opened YouTube with your search results")
-        else:
-            speak("Sorry, I couldn't search YouTube right now")
-        
-    elif "search youtube for" in command:
-        speak("Searching YouTube for your query")
-        if search_youtube_video(command):
-            speak("I've opened YouTube with your search results")
-        else:
-            speak("Sorry, I couldn't search YouTube right now")
-    
-    elif "open google" in command:
-        speak("Opening Google")
-        webbrowser.open("https://google.com")
-    elif "open facebook" in command:
-        speak("Opening Facebook")
-        webbrowser.open("https://facebook.com")
-    elif "open youtube" in command:
-        speak("Opening YouTube")
-        webbrowser.open("https://youtube.com")
-    elif "open linkedin" in command:
-        speak("Opening LinkedIn")
-        webbrowser.open("https://linkedin.com")
     elif command.startswith("play"):
         try:
             song = command.split(" ")[1]
@@ -247,11 +273,12 @@ def processCommand(c):
             webbrowser.open(link)
         except:
             speak("Please specify which song to play")
+        return True  # Continue running in main loop
 
     elif "news" in command:
         if NEWS_API_KEY == "YOUR_NEWS_API_KEY_HERE":
             speak("Please configure your NewsAPI key to get news updates.")
-            return
+            return True  # Continue running in main loop
             
         try:
             r = requests.get(f"https://newsapi.org/v2/top-headlines?country=in&apiKey={NEWS_API_KEY}")
@@ -274,16 +301,13 @@ def processCommand(c):
         except Exception as e:
             print(f"News error: {e}")
             speak("Sorry, I'm having trouble fetching news right now.")
-
+        return True  # Continue running in main loop
 
     else:
         # Let OpenAI handle the request
         output = aiProcess(c)
-        speak(output) 
-
-
-
-
+        speak(output)
+        return True  # Continue running in main loop
 
 if __name__ == "__main__":
     # Initialize recognizer with better settings

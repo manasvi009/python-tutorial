@@ -173,18 +173,51 @@ def processCommand(c):
             speak("Sorry, I couldn't search YouTube right now")
         return True
     
-    # App launching commands
-    if command.startswith("open") or command.startswith("launch"):
+    # Web browsing commands (prioritized over app launching to avoid confusion)
+    elif "open google" in command:
+        speak("Opening Google")
+        webbrowser.open("https://google.com")
+        return True
+        
+    elif "open facebook" in command:
+        speak("Opening Facebook")
+        webbrowser.open("https://facebook.com")
+        return True
+        
+    elif "open youtube" in command:
+        speak("Opening YouTube")
+        webbrowser.open("https://youtube.com")
+        return True
+        
+    elif "open linkedin" in command:
+        speak("Opening LinkedIn")
+        webbrowser.open("https://linkedin.com")
+        return True
+    
+    # App launching commands (lower priority to avoid conflicts with web commands)
+    elif command.startswith("open") or command.startswith("launch"):
         app_name = command.replace("open", "").replace("launch", "").strip()
         if app_name:
-            speak(f"Opening {app_name}")
-            if launch_app(app_name):
-                speak(f"{app_name} has been opened successfully")
+            # Check if it's a known website name to avoid confusion
+            if app_name in ["google", "youtube", "facebook", "linkedin"]:
+                speak(f"Opening {app_name}")
+                if app_name == "google":
+                    webbrowser.open("https://google.com")
+                elif app_name == "youtube":
+                    webbrowser.open("https://youtube.com")
+                elif app_name == "facebook":
+                    webbrowser.open("https://facebook.com")
+                elif app_name == "linkedin":
+                    webbrowser.open("https://linkedin.com")
             else:
-                speak(f"Sorry, I couldn't find or open {app_name}")
+                speak(f"Opening {app_name}")
+                if launch_app(app_name):
+                    speak(f"{app_name} has been opened successfully")
+                else:
+                    speak(f"Sorry, I couldn't find or open {app_name}")
         else:
             speak("Please specify which application to open")
-        return True  # Continue running
+        return True
     
     elif "start" in command and ("app" in command or "application" in command):
         # Handle "start [app name] app" format
@@ -200,26 +233,6 @@ def processCommand(c):
                     speak(f"Sorry, I couldn't start {app_name}")
         return True  # Continue running
     
-    elif "open google" in command:
-        speak("Opening Google")
-        webbrowser.open("https://google.com")
-        return True  # Continue running
-        
-    elif "open facebook" in command:
-        speak("Opening Facebook")
-        webbrowser.open("https://facebook.com")
-        return True  # Continue running
-        
-    elif "open youtube" in command:
-        speak("Opening YouTube")
-        webbrowser.open("https://youtube.com")
-        return True  # Continue running
-        
-    elif "open linkedin" in command:
-        speak("Opening LinkedIn")
-        webbrowser.open("https://linkedin.com")
-        return True  # Continue running
-        
     elif command.startswith("play"):
         try:
             song = command.split(" ")[1]
