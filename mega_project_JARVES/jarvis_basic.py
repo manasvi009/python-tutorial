@@ -28,9 +28,16 @@ def speak(text):
         
     print(f"🔊 Speaking: {text}")
     
-    # Try gTTS first (actual speech output)
+    # Try gTTS first (actual speech output) with better error handling
     temp_file = "temp_speech.mp3"
     try:
+        # Remove any existing temp file
+        if os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+            except:
+                pass  # Ignore if can't remove
+        
         # Create gTTS object and save to file
         tts = gTTS(text=text, lang='en', slow=False)
         tts.save(temp_file)
@@ -46,6 +53,13 @@ def speak(text):
         # Clean up
         pygame.mixer.music.unload()
         
+        # Remove temp file after use
+        try:
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+        except:
+            pass  # Ignore cleanup errors
+            
     except Exception as e:
         print(f"gTTS error: {e}")
         # Fallback to pyttsx3
@@ -54,16 +68,9 @@ def speak(text):
             engine.runAndWait()
         except Exception as e2:
             print(f"Fallback speech also failed: {e2}")
-    finally:
-        # Remove temporary file
-        try:
-            if os.path.exists(temp_file):
-                os.remove(temp_file)
-        except:
-            pass
 
 def launch_app(app_name):
-    """Launch applications on Windows"""
+    """Launch applications on Windows with expanded search capabilities"""
     app_commands = {
         "notepad": "notepad.exe",
         "calculator": "calc.exe",
@@ -71,9 +78,9 @@ def launch_app(app_name):
         "word": "winword.exe",
         "excel": "excel.exe",
         "powerpoint": "powerpnt.exe",
-        "chrome": "chrome.exe",
-        "firefox": "firefox.exe",
-        "edge": "msedge.exe",
+        "chrome": [r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe", r"C:\Program Files\Google\Chrome\Application\chrome.exe", "chrome.exe"],
+        "firefox": ["firefox.exe", r"C:\Program Files\Mozilla Firefox\firefox.exe", r"C:\Program Files (x86)\Mozilla Firefox\firefox.exe"],
+        "edge": ["msedge.exe", r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"],
         "vlc": "vlc.exe",
         "spotify": "spotify.exe",
         "steam": "steam.exe",
@@ -90,52 +97,190 @@ def launch_app(app_name):
         "file manager": "explorer.exe",
         "control panel": "control.exe",
         "settings": "start ms-settings:",
-        "task manager": "taskmgr.exe"
+        "task manager": "taskmgr.exe",
+        "camera": "start microsoft.windows.camera:",
+        "mail": "start outlookmail:",
+        "maps": "start maps:",
+        "calendar": "start outlookcal:",
+        "store": "start ms-windows-store:",
+        "sticky notes": "stikynot.exe",
+        "snipping tool": "snippingtool.exe",
+        "windows media player": "wmplayer.exe",
+        "internet explorer": "iexplore.exe",
+        "onedrive": "onedrive.exe",
+        "onedrive personal": "onedrive.exe",
+        "onedrive business": "odopen.exe"
     }
     
     app_name = app_name.lower().strip()
     
     if app_name in app_commands:
+        command = app_commands[app_name]
         try:
-            command = app_commands[app_name]
-            if command.startswith("start "):
-                # For special commands like settings
-                os.system(command)
+            if isinstance(command, list):
+                # Try multiple possible paths
+                for cmd in command:
+                    try:
+                        if cmd.startswith("start "):
+                            print(f"🔧 Executing system command: {cmd}")
+                            os.system(cmd)
+                            return True
+                        elif cmd.startswith("C:\\"):
+                            # Full path - check if file exists first
+                            if os.path.exists(cmd):
+                                print(f"🔍 Launching from path: {cmd}")
+                                # Launch with visibility focus
+                                subprocess.Popen([cmd], shell=False, creationflags=subprocess.CREATE_NEW_CONSOLE)
+                                print(f"✅ Successfully launched {app_name} from {cmd}")
+                                return True
+                            else:
+                                print(f"❌ Path not found: {cmd}")
+                        else:
+                            # Simple command - try to find in PATH
+                            print(f"🔧 Trying simple command: {cmd}")
+                            subprocess.Popen([cmd], shell=False)
+                            print(f"✅ Successfully launched {app_name} with command: {cmd}")
+                            return True
+                    except Exception as e:
+                        print(f"❌ Error launching {cmd}: {e}")
+                        continue
+                return False
             else:
-                # For regular applications
-                subprocess.Popen(command)
-            return True
+                # Single command
+                if command.startswith("start "):
+                    # For special Windows protocols
+                    print(f"🔧 Executing system command: {command}")
+                    os.system(command)
+                else:
+                    # For regular applications
+                    print(f"🔧 Launching with command: {command}")
+                    subprocess.Popen([command], shell=False)
+                    print(f"✅ Successfully launched {app_name}")
+                return True
         except Exception as e:
-            print(f"Error launching {app_name}: {e}")
+            print(f"❌ Error launching {app_name}: {e}")
             return False
     else:
-        # Try to find the app in common locations
+        # Try to find the app in common locations with broader search
+        try:
+            username = os.getlogin()
+        except:
+            # Fallback if os.getlogin() fails
+            username = os.environ.get('USERNAME', 'default')
+        
+        # Common installation paths
         common_paths = [
             f"C:\\Program Files\\{app_name}\\{app_name}.exe",
             f"C:\\Program Files (x86)\\{app_name}\\{app_name}.exe",
-            f"C:\\Users\\{os.getlogin()}\\AppData\\Local\\{app_name}\\{app_name}.exe"
+            f"C:\\Users\\{username}\\AppData\\Local\\{app_name}\\{app_name}.exe",
+            f"C:\\Users\\{username}\\AppData\\Roaming\\{app_name}\\{app_name}.exe",
         ]
         
-        for path in common_paths:
+        # Browser-specific paths
+        if app_name == "chrome" or app_name == "google chrome":
+            browser_paths = [
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                f"C:\\Users\\{username}\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe"
+            ]
+            common_paths.extend(browser_paths)
+        
+        if app_name == "firefox" or app_name == "mozilla firefox":
+            browser_paths = [
+                r"C:\Program Files\Mozilla Firefox\firefox.exe",
+                r"C:\Program Files (x86)\Mozilla Firefox\firefox.exe"
+            ]
+            common_paths.extend(browser_paths)
+        
+        # Also try with common executable names
+        common_executables = [
+            "Application", "app", "App", "Main", "main", 
+            app_name.replace(" ", ""),  # Remove spaces
+            app_name.replace(" ", "").lower(),  # Remove spaces and lowercase
+        ]
+        
+        for base_path in common_paths:
+            # Replace {username} placeholder
+            path = base_path.format(username=username)
             if os.path.exists(path):
                 try:
-                    subprocess.Popen(path)
+                    print(f"🔍 Launching from path: {path}")
+                    # Launch with visibility focus
+                    subprocess.Popen([path], shell=False, creationflags=subprocess.CREATE_NEW_CONSOLE)
+                    print(f"✅ Successfully launched {app_name} from {path}")
                     return True
                 except Exception as e:
-                    print(f"Error launching from {path}: {e}")
-                    continue
+                    print(f"❌ Error launching from {path}: {e}")
+        
+        # Try alternative executable names in the directory
+        for exec_name in common_executables:
+            alt_path = f"C:\\Program Files\\{app_name}\\{exec_name}.exe"
+            if os.path.exists(alt_path):
+                try:
+                    subprocess.Popen([alt_path])
+                    return True
+                except:
+                    pass
+                    
+            alt_path = f"C:\\Program Files (x86)\\{app_name}\\{exec_name}.exe"
+            if os.path.exists(alt_path):
+                try:
+                    subprocess.Popen([alt_path])
+                    return True
+                except:
+                    pass
+        
+        # As a last resort, try Windows search
+        try:
+            # Try to launch using 'start' command which searches PATH
+            result = subprocess.run(['start', app_name], shell=True, capture_output=True, text=True)
+            if result.returncode == 0:
+                return True
+        except:
+            pass
+            
+        # Try to find any .lnk or .exe file containing the app name
+        search_dirs = [
+            f"C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs",
+            f"C:\\Users\\{username}\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs",
+            "C:\\Program Files",
+            "C:\\Program Files (x86)"
+        ]
+        
+        for search_dir in search_dirs:
+            if os.path.exists(search_dir):
+                for root, dirs, files in os.walk(search_dir):
+                    for file in files:
+                        if app_name.replace(" ", "").lower() in file.replace(" ", "").lower():
+                            if file.endswith(('.exe', '.lnk')):
+                                try:
+                                    full_path = os.path.join(root, file)
+                                    subprocess.Popen([full_path])
+                                    return True
+                                except:
+                                    continue
+        
         return False
 
 def search_youtube_video(query):
     """Search for a video on YouTube and open it"""
     try:
-        # Format the search query
-        search_query = query.replace("play", "").replace("youtube", "").replace("on youtube", "").strip()
-        if not search_query:
-            return False
+        # Clean up the query by removing common phrases
+        cleaned_query = query.lower().strip()
+        
+        # Remove common command phrases
+        for phrase in ["play", "on youtube", "youtube", "search", "find", "for", "can you"]:
+            cleaned_query = cleaned_query.replace(phrase, "")
+        
+        cleaned_query = cleaned_query.strip()
+        
+        if not cleaned_query or cleaned_query == "":
+            # If no specific query, just open YouTube homepage
+            webbrowser.open("https://www.youtube.com/")
+            return True
             
         # Create YouTube search URL
-        search_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(search_query)}"
+        search_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(cleaned_query)}"
         
         # Open the search results
         webbrowser.open(search_url)
@@ -148,7 +293,94 @@ def processCommand(c):
     """Process voice commands without API keys"""
     command = c.lower()
     
-    # YouTube video playing commands
+    # System commands (shutdown, restart, etc.)
+    if "shutdown" in command or "shut down" in command:
+        speak("Shutting down the computer in 10 seconds. Say 'cancel' to abort.")
+        # For safety, I won't actually execute shutdown here
+        # os.system("shutdown /s /t 10")  # Uncomment to enable
+        speak("Shutdown command disabled for safety. Enable manually if needed.")
+        return True
+    
+    elif "restart" in command or "reboot" in command:
+        speak("Restarting the computer in 10 seconds. Say 'cancel' to abort.")
+        # For safety, I won't actually execute restart here
+        # os.system("shutdown /r /t 10")  # Uncomment to enable
+        speak("Restart command disabled for safety. Enable manually if needed.")
+        return True
+    
+    elif "sleep" in command or "hibernate" in command:
+        speak("Putting computer to sleep.")
+        # os.system("rundll32.exe powrprof.dll,SetSuspendState 0,1,0")  # Uncomment to enable
+        speak("Sleep command disabled for safety. Enable manually if needed.")
+        return True
+    
+    # Volume control commands
+    elif "volume up" in command or "increase volume" in command:
+        import ctypes
+        from ctypes import cast, POINTER
+        from comtypes import CLSCTX_ALL
+        from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+        
+        try:
+            devices = AudioUtilities.GetSpeakers()
+            interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+            volume = cast(interface, POINTER(IAudioEndpointVolume))
+            
+            # Get current volume
+            current_volume = volume.GetMasterVolumeLevelScalar()
+            # Increase volume by 10%
+            new_volume = min(current_volume + 0.1, 1.0)
+            volume.SetMasterVolumeLevelScalar(new_volume, None)
+            speak(f"Volume increased to {int(new_volume * 100)} percent")
+        except:
+            # Fallback using nircmd if pycaw is not available
+            speak("Volume control not available. Please install pycaw module.")
+        return True
+    
+    elif "volume down" in command or "decrease volume" in command:
+        import ctypes
+        from ctypes import cast, POINTER
+        from comtypes import CLSCTX_ALL
+        from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+        
+        try:
+            devices = AudioUtilities.GetSpeakers()
+            interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+            volume = cast(interface, POINTER(IAudioEndpointVolume))
+            
+            # Get current volume
+            current_volume = volume.GetMasterVolumeLevelScalar()
+            # Decrease volume by 10%
+            new_volume = max(current_volume - 0.1, 0.0)
+            volume.SetMasterVolumeLevelScalar(new_volume, None)
+            speak(f"Volume decreased to {int(new_volume * 100)} percent")
+        except:
+            speak("Volume control not available. Please install pycaw module.")
+        return True
+    
+    elif "mute" in command or "unmute" in command:
+        import ctypes
+        from ctypes import cast, POINTER
+        from comtypes import CLSCTX_ALL
+        from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+        
+        try:
+            devices = AudioUtilities.GetSpeakers()
+            interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+            volume = cast(interface, POINTER(IAudioEndpointVolume))
+            
+            # Toggle mute
+            is_muted = volume.GetMute()
+            volume.SetMute(not is_muted, None)
+            if is_muted:
+                speak("Unmuting audio")
+            else:
+                speak("Muting audio")
+        except:
+            speak("Mute/unmute not available. Please install pycaw module.")
+        return True
+    
+    # YouTube video playing commands (enhanced patterns)
     if "play" in command and "youtube" in command:
         speak("Searching YouTube for your video")
         if search_youtube_video(command):
@@ -157,7 +389,15 @@ def processCommand(c):
             speak("Sorry, I couldn't search YouTube right now")
         return True
         
-    elif command.startswith("youtube") and "play" in command:
+    elif "search" in command and "youtube" in command:
+        speak("Searching YouTube for your query")
+        if search_youtube_video(command):
+            speak("I've opened YouTube with your search results")
+        else:
+            speak("Sorry, I couldn't search YouTube right now")
+        return True
+    
+    elif "youtube" in command and ("play" in command or "find" in command or "search" in command):
         speak("Searching YouTube for your video")
         if search_youtube_video(command):
             speak("I've opened YouTube with your search results")
@@ -165,8 +405,13 @@ def processCommand(c):
             speak("Sorry, I couldn't search YouTube right now")
         return True
         
-    elif "search youtube for" in command:
-        speak("Searching YouTube for your query")
+    elif command.startswith("youtube"):
+        speak("Opening YouTube")
+        webbrowser.open("https://www.youtube.com/")
+        return True
+    
+    elif "on youtube" in command and "play" in command:
+        speak("Searching YouTube for your video")
         if search_youtube_video(command):
             speak("I've opened YouTube with your search results")
         else:
@@ -274,7 +519,7 @@ def processCommand(c):
         return False  # Signal to exit
         
     else:
-        speak("I can help you with: opening websites, launching applications, playing music, searching YouTube, telling time, or having a simple conversation. Try saying 'play music on YouTube' or 'search YouTube for tutorials'. What would you like me to do?")
+        speak("I can help you with: opening websites, launching applications, playing music, searching YouTube, controlling volume, managing system tasks, telling time, or having a simple conversation. Try saying 'open notepad' or 'search YouTube for tutorials'. What would you like me to do?")
         return True  # Continue running
 
 def main():
@@ -296,6 +541,8 @@ def main():
     recognizer.pause_threshold = 0.8   # Pause between words
     recognizer.phrase_threshold = 0.3  # Minimum phrase time
     recognizer.non_speaking_duration = 0.5  # Time before speech ends
+    
+    # Try microphone first, but if it fails, run in text mode
     try:
         with sr.Microphone() as source:
             print("Adjusting for ambient noise... Please wait 2 seconds.")
@@ -389,4 +636,8 @@ def text_mode():
                 break
 
 if __name__ == "__main__":
-    main()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "text":
+        text_mode()
+    else:
+        main()
